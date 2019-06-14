@@ -116,10 +116,13 @@ fn mergeSortLeftInPlace(comptime T: type, items1: []T, items2: []T, lessThan: fn
                 targetPtr += 1;
             } else {
                 std.mem.swap(T, &targetPtr[0], &src1Ptr[0]);
-                src1Ptr += 1;
+                if (src1Ptr + 1 != src2Ptr and lessThan(src1Ptr[1], src1Ptr[0])) {
+                    src1Ptr += 1;
+                    if (src1Ptr == src2Ptr)
+                        src1Ptr = targetPtr + 1;
+                } 
+                //src1Ptr += 1;
                 targetPtr += 1;
-                if (src1Ptr == src2Ptr)
-                    src1Ptr = targetPtr;
             }
         } else {
             std.mem.swap(T, &targetPtr[0], &src2Ptr[0]);
@@ -391,20 +394,22 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
         _ = stack.pop();
     }
 }
-test "Test" {
+
+test "Test Sequential" {
     var da = std.heap.DirectAllocator.init();
     var allocator = da.allocator;
 
-    const len = 10;
+    const len = 20;
     var values = try allocator.alloc(f64, len);
-    for (values[0..len/2]) |*v, n| {
+    
+    for (values[0..5]) |*v, n| {
         v.* = @intToFloat(f64, n);
     }
-    for (values[len/2..]) |*v, n| {
+    for (values[5..]) |*v, n| {
         v.* = @intToFloat(f64, n);
     }
 
-    const sorted_values = mergeSortLeftInPlace(f64, values[0..len/2], values[len/2..], std.sort.asc(f64));
+    const sorted_values = mergeSortLeftInPlace(f64, values[0..5], values[5..], std.sort.asc(f64));
     
     for (sorted_values) |v| {
         warn("{}\n", v);
