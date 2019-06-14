@@ -91,11 +91,25 @@ fn mergeSortLeftInPlace(comptime T: type, items1: []T, items2: []T, lessThan: fn
     const src2End = items2.ptr + items2.len;
 
     var targetPtr = items1.ptr;
-
+    warn("\n");
     while (true) {
-        warn("p1:{} p2:{} t:{}\n", src1Ptr, src2Ptr, targetPtr);
-        warn("p1:{} p2:{} t:{}\n", src1Ptr[0], src2Ptr[0], targetPtr[0]);
-        
+        //warn("p1:{} p2:{} t:{}\n", src1Ptr, src2Ptr, targetPtr);
+        //warn("p1:{} p2:{} t:{}\n", src1Ptr[0], src2Ptr[0], targetPtr[0]);
+       
+        for (items1.ptr[0..items1.len + items2.len]) |*v| {
+            if (&src1Ptr[0] == v) {
+                warn("L*");
+            } else if (&src2Ptr[0] == v) {
+                warn("R*");
+            } else if (&targetPtr[0] == v) {
+                warn(" *");
+            } else {
+                warn("  ");
+            }
+            warn("{} ", v.*);
+        }
+        warn("\n");
+
         if (!lessThan(src2Ptr[0], src1Ptr[0])) {
             if (src1Ptr == targetPtr) {
                 src1Ptr += 1;
@@ -115,14 +129,32 @@ fn mergeSortLeftInPlace(comptime T: type, items1: []T, items2: []T, lessThan: fn
             targetPtr += 1;
         }
 
-        // if (src2Ptr == src2End) { //copy rest of the tmp data to the end
-        //     // const leftBytes = @ptrToInt(src1End) - @ptrToInt(src1Ptr);
-        //     // @memcpy(@ptrCast([*]u8, targetPtr), @ptrCast([*]u8, src1Ptr), leftBytes);
-        //     break; 
-        // }
+        if (src2Ptr == src2End) { //copy rest of the tmp data to the end
+            while (src1Ptr != src2Ptr) {
+                std.mem.swap(T, &targetPtr[0], &src1Ptr[0]);
+                src1Ptr += 1;
+                targetPtr += 1;
+            }
+            break;
+        }
         if (src1Ptr == src2Ptr and src1Ptr == targetPtr) //all pointers caught up, we are done
             break;
     }
+
+        for (items1.ptr[0..items1.len + items2.len]) |*v| {
+            if (&src1Ptr[0] == v) {
+                warn("L*");
+            } else if (&src2Ptr[0] == v) {
+                warn("R*");
+            } else if (&targetPtr[0] == v) {
+                warn(" *");
+            } else {
+                warn("  ");
+            }
+            warn("{} ", v.*);
+        }
+        warn("\n");
+
     return items1.ptr[0..items1.len + items2.len];
 }
 
@@ -224,7 +256,7 @@ fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T
     if (items1.len > 1000000000)
         return error.OutOfMemory;
     const val = mergeSortLeftInPlace(T, items1, items2, lessThan);
-    return error.OutOfMemory;
+    return val;
     
     // if (items1.len < items2.len) {
     //     return mergeSortLeft(T, items1, items2, lessThan, allocator);
@@ -357,6 +389,25 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
         
         stack.set(stack.len - 2, try mergeSort(T, r2, r1, lessThan, merging_allocator));
         _ = stack.pop();
+    }
+}
+test "Test" {
+    var da = std.heap.DirectAllocator.init();
+    var allocator = da.allocator;
+
+    const len = 10;
+    var values = try allocator.alloc(f64, len);
+    for (values[0..len/2]) |*v, n| {
+        v.* = @intToFloat(f64, n);
+    }
+    for (values[len/2..]) |*v, n| {
+        v.* = @intToFloat(f64, n);
+    }
+
+    const sorted_values = mergeSortLeftInPlace(f64, values[0..len/2], values[len/2..], std.sort.asc(f64));
+    
+    for (sorted_values) |v| {
+        warn("{}\n", v);
     }
 }
 
