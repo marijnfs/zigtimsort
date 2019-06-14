@@ -84,7 +84,50 @@ fn binarySearch(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T)
 
 //mergeSort assumes items1 follows right before items2 in memory
 //merge sort allocates to can return an error
+fn mergeSortLeftInPlace(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool) []T {
+    var src1Ptr = items1.ptr;
+    
+    var src2Ptr = items2.ptr;
+    const src2End = items2.ptr + items2.len;
 
+    var targetPtr = items1.ptr;
+
+    while (true) {
+        warn("p1:{} p2:{} t:{}\n", src1Ptr, src2Ptr, targetPtr);
+        warn("p1:{} p2:{} t:{}\n", src1Ptr[0], src2Ptr[0], targetPtr[0]);
+        
+        if (!lessThan(src2Ptr[0], src1Ptr[0])) {
+            if (src1Ptr == targetPtr) {
+                src1Ptr += 1;
+                targetPtr += 1;
+            } else {
+                std.mem.swap(T, &targetPtr[0], &src1Ptr[0]);
+                src1Ptr += 1;
+                targetPtr += 1;
+                if (src1Ptr == src2Ptr)
+                    src1Ptr = targetPtr;
+            }
+        } else {
+            std.mem.swap(T, &targetPtr[0], &src2Ptr[0]);
+            if (targetPtr == src1Ptr)
+                src1Ptr = src2Ptr;
+            src2Ptr += 1;
+            targetPtr += 1;
+        }
+
+        // if (src2Ptr == src2End) { //copy rest of the tmp data to the end
+        //     // const leftBytes = @ptrToInt(src1End) - @ptrToInt(src1Ptr);
+        //     // @memcpy(@ptrCast([*]u8, targetPtr), @ptrCast([*]u8, src1Ptr), leftBytes);
+        //     break; 
+        // }
+        if (src1Ptr == src2Ptr and src1Ptr == targetPtr) //all pointers caught up, we are done
+            break;
+    }
+    return items1.ptr[0..items1.len + items2.len];
+}
+
+//mergeSort assumes items1 follows right before items2 in memory
+//merge sort allocates to can return an error
 fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
     const tmp = try allocator.alloc(T, items1.len);
 
@@ -178,11 +221,16 @@ fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T
     if (items2.len == 0)
         return items1;
 
-    if (items1.len < items2.len) {
-        return mergeSortLeft(T, items1, items2, lessThan, allocator);
-    } else {
-        return mergeSortRight(T, items1, items2, lessThan, allocator);
-    }
+    if (items1.len > 1000000000)
+        return error.OutOfMemory;
+    const val = mergeSortLeftInPlace(T, items1, items2, lessThan);
+    return error.OutOfMemory;
+    
+    // if (items1.len < items2.len) {
+    //     return mergeSortLeft(T, items1, items2, lessThan, allocator);
+    // } else {
+    //     return mergeSortRight(T, items1, items2, lessThan, allocator);
+    // }
 }
 
 
@@ -313,12 +361,12 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
 }
 
 pub fn main() anyerror!void {
-    const N = 4000000;
+    const N = 1000;
     std.debug.warn("allocating\n");
 
     var da = std.heap.DirectAllocator.init();
     var allocator = da.allocator;
-
+    // const f64 = f64;
 
     var values = try allocator.alloc(f64, N);
     var values2 = try allocator.alloc(f64, N);
@@ -346,6 +394,7 @@ pub fn main() anyerror!void {
 
     //Check if values correspond
     for (values) |_, n| {
-        std.debug.assert(values[n] == values2[n]);
+        warn("{} {}\n", values[n], values2[n]);
+        // std.debug.assert(values[n] == values2[n]);
     }
 }
