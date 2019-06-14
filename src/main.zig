@@ -398,18 +398,20 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
 test "Test Sequential" {
     var da = std.heap.DirectAllocator.init();
     var allocator = da.allocator;
-
+    
     const len = 20;
     var values = try allocator.alloc(f64, len);
+    const seq_1 = values[0..15];
+    const seq_2 = values[15..];
     
-    for (values[0..5]) |*v, n| {
+    for (seq_1) |*v, n| {
         v.* = @intToFloat(f64, n);
     }
-    for (values[5..]) |*v, n| {
+    for (seq_2) |*v, n| {
         v.* = @intToFloat(f64, n);
     }
 
-    const sorted_values = mergeSortLeftInPlace(f64, values[0..5], values[5..], std.sort.asc(f64));
+    const sorted_values = mergeSortLeftInPlace(f64, seq_1, seq_2, std.sort.asc(f64));
     
     for (sorted_values) |v| {
         warn("{}\n", v);
