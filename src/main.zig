@@ -15,15 +15,21 @@ pub fn binarySort(comptime T: type, items: []T, lessThan: fn (lhs: T, rhs: T) bo
             const v = items[i];
             var l : usize = 0;
             var r : usize = i;
-            while (l + 1 < r) {
+            while (l < r) {
                 const m = (l + r) / 2;
                 if (lessThan(items[m], v)) {
-                    l = m;
+                    l = m + 1;
                 } else {
                     r = m;
                 }
             }
-            std.mem.copy(T, items[l+1..i], items[l..i-1]);
+            if (l == i)
+                continue;
+
+            var n = i;
+            while (n > l) : (n -= 1)
+                items[n] = items[n - 1];
+            // std.mem.copy(T, items[l+1..i+1], items[l..i]);
             items[l] = v;
         }
     }
@@ -89,7 +95,24 @@ pub const StackAllocator = struct {
     }
 };
 
-fn binarySearch(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) bool) usize {
+fn lowerBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) bool) usize {
+    if (items.len < 2)
+        return 0;
+
+    var l : usize = 0;
+    var r : usize = items.len;
+    while (l + 1 < r) {
+        const m = (l + r) / 2;
+        if (lessThan(items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
+            l = m;
+        } else {
+            r = m;
+        }
+    }
+    return l;
+}
+
+fn upperBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) bool) usize {
     if (items.len < 2)
         return 0;
 
@@ -98,13 +121,14 @@ fn binarySearch(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T)
     while (l + 1 < r) {
         const m = (l + r) / 2;
         if (!lessThan(value, items[m])) {//we want l to be _past_ the value (for sorting purpose)
-            l = m;
+            l = m + 1;
         } else {
             r = m;
         }
     }
     return l;
 }
+
 //mergeSort assumes items1 follows right before items2 in memory
 //merge sort allocates to can return an error
 fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
@@ -200,14 +224,23 @@ fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T
     if (items2.len == 0)
         return items1;
 
-    if (items1.len > 1000000000)
-        return error.OutOfMemory;
+    const full_array = items1.ptr[0..items1.len + items2.len];
     
-    if (items1.len < items2.len) {
-        return mergeSortLeft(T, items1, items2, lessThan, allocator);
+    const start_items1  = lowerBound(T, items1, items2[0], lessThan);
+    const end_items2    = upperBound(T, items2, items1[items1.len - 1], lessThan);
+
+    const sort_items1 = items1[start_items1..];
+    const sort_items2 = items2[0..end_items2];
+    if (sort_items1.len == 0 or
+        sort_items2.len == 0)
+        return full_array;
+
+    if (sort_items1.len < sort_items2.len) {
+        _ = try mergeSortLeft(T, sort_items1, sort_items2, lessThan, allocator);
     } else {
-        return mergeSortRight(T, items1, items2, lessThan, allocator);
+        _ = try mergeSortRight(T, sort_items1, sort_items2, lessThan, allocator);
     }
+    return full_array;
 }
 
 
@@ -244,6 +277,7 @@ fn timSortNextRun(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool, m
     //extent run if needed, and insertion sort it
     if (len < min_run and len < seq_len) {
         const extent = std.math.min(min_run, seq_len);
+        // std.sort.insertionSort(T, items[0..extent], lessThan);
         binarySort(T, items[0..extent], lessThan);
         return items[0..extent];
     }
@@ -361,7 +395,7 @@ test "Test Sequential" {
 }
 
 pub fn main() anyerror!void {
-    const N = 4000000;
+    const N = 40000000;
     std.debug.warn("allocating\n");
 
     var da = std.heap.DirectAllocator.init();
@@ -393,8 +427,8 @@ pub fn main() anyerror!void {
     warn("Tim sort took: {}\n", std.time.milliTimestamp() - start_time_tim);
 
     //Check if values correspond
-    // for (values) |_, n| {
+    for (values) |_, n| {
         // warn("{} {}\n", values[n], values2[n]);
-        // std.debug.assert(values[n] == values2[n]);
-    // }
+        std.debug.assert(values[n] == values2[n]);
+    }
 }
