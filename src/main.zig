@@ -35,15 +35,15 @@ pub fn binarySort(comptime T: type, items: []T, lessThan: fn (lhs: T, rhs: T) bo
     }
 }
 
-pub const StackAllocator = struct {
+pub const StackedAllocator = struct {
     pub allocator: std.mem.Allocator,
     child_allocator: *std.mem.Allocator,
     cur_len: usize,
     cur_used: usize,
     cur_alloc: []u8,
     
-    pub fn init(child_allocator: *std.mem.Allocator) StackAllocator {
-        return StackAllocator{
+    pub fn init(child_allocator: *std.mem.Allocator) StackedAllocator {
+        return StackedAllocator{
             .allocator = std.mem.Allocator{
                 .reallocFn = realloc,
                 .shrinkFn = shrink,
@@ -55,12 +55,12 @@ pub const StackAllocator = struct {
         };
     }
 
-    pub fn deinit(self: *StackAllocator) void {
+    pub fn deinit(self: *StackedAllocator) void {
         self.child_allocator.free(self.cur_alloc);
     }
 
     fn alloc(allocator: *std.mem.Allocator, n: usize, alignment: u29) error{OutOfMemory}![]u8 {
-        const self = @fieldParentPtr(StackAllocator, "allocator", allocator);
+        const self = @fieldParentPtr(StackedAllocator, "allocator", allocator);
         if (self.cur_len == 0) { //nothing was allocated yet
             self.cur_alloc = try self.child_allocator.alloc(u8, n);
             self.cur_len   = self.cur_alloc.len;
@@ -80,7 +80,7 @@ pub const StackAllocator = struct {
     }
 
     fn shrink(allocator: *std.mem.Allocator, old_mem_unaligned: []u8, old_align: u29, new_size: usize, new_align: u29) []u8 {
-        const self = @fieldParentPtr(StackAllocator, "allocator", allocator);
+        const self = @fieldParentPtr(StackedAllocator, "allocator", allocator);
         if ((self.cur_alloc.ptr + self.cur_used) != (old_mem_unaligned.ptr + old_mem_unaligned.len)) {
             warn("Failed ptr align");
             unreachable;
@@ -113,14 +113,15 @@ fn lowerBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) b
 }
 
 fn upperBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) bool) usize {
+    std.debug.assert(items.len != 0);
     if (items.len < 2)
         return 0;
 
     var l : usize = 0;
     var r : usize = items.len;
-    while (l + 1 < r) {
+    while (l < r) {
         const m = (l + r) / 2;
-        if (!lessThan(value, items[m])) {//we want l to be _past_ the value (for sorting purpose)
+        if (lessThan(items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
             l = m + 1;
         } else {
             r = m;
@@ -226,8 +227,8 @@ fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T
 
     const full_array = items1.ptr[0..items1.len + items2.len];
     
-    const start_items1  = lowerBound(T, items1, items2[0], lessThan);
-    const end_items2    = upperBound(T, items2, items1[items1.len - 1], lessThan);
+    const start_items1  = 0;//lowerBound(T, items1, items2[0], lessThan);
+    const end_items2    = items2.len;//upperBound(T, items2, items1[items1.len - 1], lessThan);
 
     const sort_items1 = items1[start_items1..];
     const sort_items2 = items2[0..end_items2];
@@ -319,7 +320,7 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
     // Instead of using slow direct allocators, we use a stack allocator that keeps memory mapped
     // And grows it only if needed, to save on kernel calls
 
-    var sa = StackAllocator.init(&da.allocator);
+    var sa = StackedAllocator.init(&da.allocator);
     defer sa.deinit();
     var merging_allocator = &sa.allocator;
 
@@ -395,7 +396,7 @@ test "Test Sequential" {
 }
 
 pub fn main() anyerror!void {
-    const N = 40000000;
+    const N = 4000000;
     std.debug.warn("allocating\n");
 
     var da = std.heap.DirectAllocator.init();
