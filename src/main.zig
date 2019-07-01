@@ -298,8 +298,7 @@ fn calculateMinRun(len: usize) usize {
 }
 
 fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
-    var da = std.heap.DirectAllocator.init();
-    defer da.deinit();
+    var allocator = std.heap.direct_allocator;
 
     
     const min_run = calculateMinRun(items.len);
@@ -309,18 +308,18 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
     const stack_size = 2 * @sizeOf([]T) * (items.len / min_run + 1);
 
     // allocate the buffer for the run stack 
-    var stack_buf = try da.allocator.alloc(u8, stack_size);
-    defer da.allocator.free(stack_buf);
+    var stack_buf = try allocator.alloc(u8, stack_size);
+    defer allocator.free(stack_buf);
 
     var run_stack_alloc = &std.heap.FixedBufferAllocator.init(stack_buf).allocator;
     var stack = std.ArrayList([]T).init(run_stack_alloc);
-    // var stack = std.ArrayList([]T).init(&da.allocator);
+    // var stack = std.ArrayList([]T).init(&allocator);
 
     // To perform the mergeSort, we need to make allocations to temporarily store the values
     // Instead of using slow direct allocators, we use a stack allocator that keeps memory mapped
     // And grows it only if needed, to save on kernel calls
 
-    var sa = StackedAllocator.init(&da.allocator);
+    var sa = StackedAllocator.init(allocator);
     defer sa.deinit();
     var merging_allocator = &sa.allocator;
 
@@ -373,8 +372,7 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
 }
 
 test "Test Sequential" {
-    var da = std.heap.DirectAllocator.init();
-    var allocator = da.allocator;
+    var allocator = std.heap.direct_allocator;
     
     const len = 20;
     var values = try allocator.alloc(f64, len);
@@ -396,11 +394,10 @@ test "Test Sequential" {
 }
 
 pub fn main() anyerror!void {
-    const N = 4000000;
+    const N = 40000000;
     std.debug.warn("allocating\n");
 
-    var da = std.heap.DirectAllocator.init();
-    var allocator = da.allocator;
+    var allocator = std.heap.direct_allocator;
     // const f64 = f64;
 
     var values = try allocator.alloc(f64, N);
