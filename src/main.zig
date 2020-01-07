@@ -36,12 +36,12 @@ pub fn binarySort(comptime T: type, items: []T, lessThan: fn (lhs: T, rhs: T) bo
 }
 
 pub const StackedAllocator = struct {
-    pub allocator: std.mem.Allocator,
+    allocator: std.mem.Allocator,
     child_allocator: *std.mem.Allocator,
     cur_len: usize,
     cur_used: usize,
     cur_alloc: []u8,
-    
+
     pub fn init(child_allocator: *std.mem.Allocator) StackedAllocator {
         return StackedAllocator{
             .allocator = std.mem.Allocator{
