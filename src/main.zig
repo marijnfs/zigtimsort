@@ -82,7 +82,7 @@ pub const StackedAllocator = struct {
     fn shrink(allocator: *std.mem.Allocator, old_mem_unaligned: []u8, old_align: u29, new_size: usize, new_align: u29) []u8 {
         const self = @fieldParentPtr(StackedAllocator, "allocator", allocator);
         if ((self.cur_alloc.ptr + self.cur_used) != (old_mem_unaligned.ptr + old_mem_unaligned.len)) {
-            warn("Failed ptr align");
+            warn("Failed ptr align", .{});
             unreachable;
         }
 
@@ -395,7 +395,7 @@ test "Test Sequential" {
 
 pub fn main() anyerror!void {
     const N = 40000000;
-    std.debug.warn("allocating\n");
+    std.debug.warn("allocating\n", .{});
 
     var allocator = std.heap.direct_allocator;
     // const f64 = f64;
@@ -413,16 +413,16 @@ pub fn main() anyerror!void {
     }
 
     //Run default sort
-    std.debug.warn("Running default sort\n");
+    std.debug.warn("Running default sort\n", .{});
     const start_time_default = std.time.milliTimestamp();
     std.sort.sort(f64, values, std.sort.asc(f64));
-    warn("Default sort took: {}\n", std.time.milliTimestamp() - start_time_default);
+    warn("Default sort took: {}\n", .{std.time.milliTimestamp() - start_time_default});
 
     //Run TimSort
-    std.debug.warn("Running TimSort sort\n");
-    const start_time_tim = std.time.milliTimestamp();
+    std.debug.warn("Running TimSort sort\n", .{});
+    const start_time_time = std.time.milliTimestamp();
     try timSort(f64, values2, std.sort.asc(f64));
-    warn("Tim sort took: {}\n", std.time.milliTimestamp() - start_time_tim);
+    warn("Tim sort took: {}\n", .{std.time.milliTimestamp() - start_time_time});
 
     //Check if values correspond
     for (values) |_, n| {
