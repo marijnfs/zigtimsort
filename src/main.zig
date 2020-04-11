@@ -332,14 +332,15 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
         if (whats_left.len == 0)
             break;
         
-        const stack_n = stack.items.len;
-        if (stack_n < 3) {
+
+        if (stack.items.len < 3) {
             const next_run = timSortNextRun(T, whats_left, lessThan, min_run);
             try stack.append(next_run);
             whats_left = whats_left[next_run.len..];
             continue;
         }
 
+        const stack_n = stack.items.len;
         if (stack_n >= 3) {
             const X = stack.at(stack_n - 1); //most recent in stack, comes after r2
             const Y = stack.at(stack_n - 2);
@@ -350,12 +351,12 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
                 const new_slice = try mergeSort(T, Z, Y, lessThan, merging_allocator);
                 _ = stack.pop();
                 _ = stack.pop();
-                stack.set(stack_n - 1, new_slice);
+                stack.set(stack.items.len - 1, new_slice);
                 try stack.append(X);
             } else if (Y.len <= X.len) {
                 const new_slice = try mergeSort(T, Y, X, lessThan, merging_allocator);
                 _ = stack.pop();
-                stack.set(stack_n - 1, new_slice);
+                stack.set(stack.items.len - 1, new_slice);
             } else {
                 const next_run = timSortNextRun(T, whats_left, lessThan, min_run);
                 try stack.append(next_run);
@@ -431,8 +432,9 @@ pub fn main() anyerror!void {
     //Check if values correspond
     std.debug.warn("Comparing all items\n", .{});
     for (values) |_, n| {
-        // warn("{} {}\n", values[n], values2[n]);
-        std.debug.assert(values[n] == values2[n]);
+        if (values[n] != values2[n]) {
+            std.debug.panic("Failed, valued #{} doesn't compare: {} != {}\n", .{n, values[n], values2[n]});
+        }
     }
     std.debug.warn("Done\n", .{});
 }
