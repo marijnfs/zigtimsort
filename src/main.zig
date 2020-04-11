@@ -1,6 +1,7 @@
 const std = @import("std");
 const warn = std.debug.warn;
 
+
 var rng = std.rand.DefaultPrng.init(0x12345678);
 
 
@@ -298,7 +299,7 @@ fn calculateMinRun(len: usize) usize {
 }
 
 fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
-    var allocator = std.heap.direct_allocator;
+    var allocator = std.heap.page_allocator;
 
     
     const min_run = calculateMinRun(items.len);
@@ -330,29 +331,31 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
     while (true) {
         if (whats_left.len == 0)
             break;
-        if (stack.len < 3) {
+        
+        const stack_n = stack.items.len;
+        if (stack_n < 3) {
             const next_run = timSortNextRun(T, whats_left, lessThan, min_run);
             try stack.append(next_run);
             whats_left = whats_left[next_run.len..];
             continue;
         }
 
-        if (stack.len >= 3) {
-            const X = stack.at(stack.len - 1); //most recent in stack, comes after r2
-            const Y = stack.at(stack.len - 2);
-            const Z = stack.at(stack.len - 3);
+        if (stack_n >= 3) {
+            const X = stack.at(stack_n - 1); //most recent in stack, comes after r2
+            const Y = stack.at(stack_n - 2);
+            const Z = stack.at(stack_n - 3);
 
 
             if (Z.len <= Y.len + X.len) {
                 const new_slice = try mergeSort(T, Z, Y, lessThan, merging_allocator);
                 _ = stack.pop();
                 _ = stack.pop();
-                stack.set(stack.len - 1, new_slice);
+                stack.set(stack_n - 1, new_slice);
                 try stack.append(X);
             } else if (Y.len <= X.len) {
                 const new_slice = try mergeSort(T, Y, X, lessThan, merging_allocator);
                 _ = stack.pop();
-                stack.set(stack.len - 1, new_slice);
+                stack.set(stack_n - 1, new_slice);
             } else {
                 const next_run = timSortNextRun(T, whats_left, lessThan, min_run);
                 try stack.append(next_run);
@@ -362,17 +365,18 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
         }
     }
 
-    while (stack.len > 1) {
-        const r1 = stack.at(stack.len - 1);
-        const r2 = stack.at(stack.len - 2);
+    while (stack.items.len > 1) {
+        const stack_n = stack.items.len;
+        const r1 = stack.at(stack_n - 1);
+        const r2 = stack.at(stack_n - 2);
         
-        stack.set(stack.len - 2, try mergeSort(T, r2, r1, lessThan, merging_allocator));
+        stack.set(stack_n - 2, try mergeSort(T, r2, r1, lessThan, merging_allocator));
         _ = stack.pop();
     }
 }
 
 test "Test Sequential" {
-    var allocator = std.heap.direct_allocator;
+    var allocator = std.heap.page_allocator;
     
     const len = 20;
     var values = try allocator.alloc(f64, len);
@@ -397,14 +401,14 @@ pub fn main() anyerror!void {
     const N = 40000000;
     std.debug.warn("allocating\n", .{});
 
-    var allocator = std.heap.direct_allocator;
+    var allocator = std.heap.page_allocator;
     // const f64 = f64;
 
     var values = try allocator.alloc(f64, N);
     var values2 = try allocator.alloc(f64, N);
 
     for (values) |_, n| {
-        const val = @intToFloat(f64, rng.random.range(i64, -1000, 1000)); //fully random
+        const val = @intToFloat(f64, rng.random.intRangeLessThan(i64, -1000, 1000)); //fully random
         // const val = @intToFloat(f64, @intCast(i64, n) + rng.random.range(i64, -10, 10)); //slightly random, mostly ascending
         // const val = @intToFloat(f64, -@intCast(i64, n) + rng.random.range(i64, -10, 10)); //slightly random, mostly descending
         // warn("{} ", val);
