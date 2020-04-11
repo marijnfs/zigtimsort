@@ -429,8 +429,10 @@ pub fn main() anyerror!void {
     warn("Tim sort took: {}\n", .{std.time.milliTimestamp() - start_time_time});
 
     //Check if values correspond
+    std.debug.warn("Comparing all items\n", .{});
     for (values) |_, n| {
         // warn("{} {}\n", values[n], values2[n]);
         std.debug.assert(values[n] == values2[n]);
     }
+    std.debug.warn("Done\n", .{});
 }
