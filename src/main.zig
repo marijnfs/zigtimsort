@@ -342,21 +342,21 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
 
         const stack_n = stack.items.len;
         if (stack_n >= 3) {
-            const X = stack.at(stack_n - 1); //most recent in stack, comes after r2
-            const Y = stack.at(stack_n - 2);
-            const Z = stack.at(stack_n - 3);
+            const X = stack.items[stack_n - 1]; //most recent in stack, comes after r2
+            const Y = stack.items[stack_n - 2];
+            const Z = stack.items[stack_n - 3];
 
 
             if (Z.len <= Y.len + X.len) {
                 const new_slice = try mergeSort(T, Z, Y, lessThan, merging_allocator);
                 _ = stack.pop();
                 _ = stack.pop();
-                stack.set(stack.items.len - 1, new_slice);
+                stack.items[stack.items.len - 1] = new_slice;
                 try stack.append(X);
             } else if (Y.len <= X.len) {
                 const new_slice = try mergeSort(T, Y, X, lessThan, merging_allocator);
                 _ = stack.pop();
-                stack.set(stack.items.len - 1, new_slice);
+                stack.items[stack.items.len - 1] = new_slice;
             } else {
                 const next_run = timSortNextRun(T, whats_left, lessThan, min_run);
                 try stack.append(next_run);
@@ -368,10 +368,10 @@ fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
 
     while (stack.items.len > 1) {
         const stack_n = stack.items.len;
-        const r1 = stack.at(stack_n - 1);
-        const r2 = stack.at(stack_n - 2);
+        const r1 = stack.items[stack_n - 1];
+        const r2 = stack.items[stack_n - 2];
         
-        stack.set(stack_n - 2, try mergeSort(T, r2, r1, lessThan, merging_allocator));
+        stack.items[stack_n - 2] = try mergeSort(T, r2, r1, lessThan, merging_allocator);
         _ = stack.pop();
     }
 }
