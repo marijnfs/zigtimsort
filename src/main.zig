@@ -4,8 +4,7 @@ const warn = std.debug.warn;
 
 var rng = std.rand.DefaultPrng.init(0x12345678);
 
-
-pub fn binarySort(comptime T: type, items: []T, lessThan: fn (lhs: T, rhs: T) bool) void {
+pub fn binarySort(comptime T: type, items: []T, lessThan: fn (context: void, lhs: T, rhs: T) bool) void {
     {
         if (items.len < 2)
             return;
@@ -18,7 +17,7 @@ pub fn binarySort(comptime T: type, items: []T, lessThan: fn (lhs: T, rhs: T) bo
             var r : usize = i;
             while (l < r) {
                 const m = (l + r) / 2;
-                if (lessThan(items[m], v)) {
+                if (lessThan({}, items[m], v)) {
                     l = m + 1;
                 } else {
                     r = m;
@@ -104,7 +103,7 @@ fn lowerBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) b
     var r : usize = items.len;
     while (l + 1 < r) {
         const m = (l + r) / 2;
-        if (lessThan(items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
+        if (lessThan({}, items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
             l = m;
         } else {
             r = m;
@@ -122,7 +121,7 @@ fn upperBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) b
     var r : usize = items.len;
     while (l < r) {
         const m = (l + r) / 2;
-        if (lessThan(items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
+        if (lessThan({}, items[m], value)) {//we want l to be _past_ the value (for sorting purpose)
             l = m + 1;
         } else {
             r = m;
@@ -133,7 +132,7 @@ fn upperBound(comptime T: type, items: []T, value: T, lessThan: fn(l: T, r: T) b
 
 //mergeSort assumes items1 follows right before items2 in memory
 //merge sort allocates to can return an error
-fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
+fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(context: void, l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
     const tmp = try allocator.alloc(T, items1.len);
 
     defer allocator.free(tmp);
@@ -153,7 +152,7 @@ fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, 
     var targetPtr = items1.ptr;
 
     while (true) {
-        if (lessThan(src1Ptr[0], src2Ptr[0])) {
+        if (lessThan({}, src1Ptr[0], src2Ptr[0])) {
             targetPtr[0] = src1Ptr[0];
             src1Ptr += 1;
         } else {
@@ -177,7 +176,7 @@ fn mergeSortLeft(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, 
 }
 
 
-fn mergeSortRight(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
+fn mergeSortRight(comptime T: type, items1: []T, items2: []T, lessThan: fn(context: void, l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
     const tmp = try allocator.alloc(T, items2.len);
     defer allocator.free(tmp);
 
@@ -196,7 +195,7 @@ fn mergeSortRight(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T,
     var targetPtr = items2.ptr + tmp.len - 1;
 
     while (true) {
-        if (!lessThan(src2Ptr[0], src1Ptr[0])) {
+        if (!lessThan({}, src2Ptr[0], src1Ptr[0])) {
             targetPtr[0] = src2Ptr[0];
             src2Ptr -= 1;
         } else {
@@ -219,7 +218,7 @@ fn mergeSortRight(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T,
     return items1.ptr[0..items1.len + items2.len];
 }
 
-fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
+fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(context: void, l: T, r: T) bool, allocator : *std.mem.Allocator) ![]T {
     if (items1.len == 0)
         return items2;
     
@@ -246,7 +245,7 @@ fn mergeSort(comptime T: type, items1: []T, items2: []T, lessThan: fn(l: T, r: T
 }
 
 
-fn timSortNextRun(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool, min_run : usize) []T {
+fn timSortNextRun(comptime T: type, items: []T, lessThan: fn(context: void, l: T, r: T) bool, min_run : usize) []T {
     if (items.len < 2)
         return items;
     
@@ -257,12 +256,12 @@ fn timSortNextRun(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool, m
     const seq_len = items.len;
     
     //find natural run
-    if (lessThan(cur[0], next[0])) { //non-descending
+    if (lessThan({}, cur[0], next[0])) { //non-descending
         while (true) {
             cur += 1;
             next += 1;
             len += 1;
-            if (! (len < seq_len and lessThan(cur[0], next[0])))
+            if (! (len < seq_len and lessThan({}, cur[0], next[0])))
                 break;
         }
     } else { //descending
@@ -270,7 +269,7 @@ fn timSortNextRun(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool, m
             cur += 1;
             next += 1;
             len += 1;
-            if (! (len < seq_len and lessThan(next[0], cur[0])))
+            if (! (len < seq_len and lessThan({}, next[0], cur[0])))
                 break;
         }
         std.mem.reverse(T, items[0..len]);
@@ -298,7 +297,7 @@ fn calculateMinRun(len: usize) usize {
     return r + n;
 }
 
-fn timSort(comptime T: type, items: []T, lessThan: fn(l: T, r: T) bool) !void {
+fn timSort(comptime T: type, items: []T, lessThan: fn(context: void, l: T, r: T) bool) !void {
     var allocator = std.heap.page_allocator;
 
     
@@ -398,6 +397,7 @@ test "Test Sequential" {
     // }
 }
 
+const asc_f64 = std.sort.asc(f64);
 pub fn main() anyerror!void {
     const N = 40000000;
     std.debug.warn("allocating\n", .{});
@@ -420,13 +420,15 @@ pub fn main() anyerror!void {
     //Run default sort
     std.debug.warn("Running default sort\n", .{});
     const start_time_default = std.time.milliTimestamp();
-    std.sort.sort(f64, values, std.sort.asc(f64));
+
+
+    std.sort.sort(f64, values, {}, asc_f64);
     warn("Default sort took: {}\n", .{std.time.milliTimestamp() - start_time_default});
 
     //Run TimSort
     std.debug.warn("Running TimSort sort\n", .{});
     const start_time_time = std.time.milliTimestamp();
-    try timSort(f64, values2, std.sort.asc(f64));
+    try timSort(f64, values2, asc_f64);
     warn("Tim sort took: {}\n", .{std.time.milliTimestamp() - start_time_time});
 
     //Check if values correspond
